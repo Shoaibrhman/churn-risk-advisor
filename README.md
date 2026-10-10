@@ -1,64 +1,58 @@
-# Customer Churn Prediction
+Churn Risk Advisor
 
-**Author:** Shoaib ur Rehman | Quaid-i-Azam University (QAU)
-**Course:** Introduction to Applied AI - Project 1: ML-Powered Customer Analytics
-**Dataset:** [Telco Customer Churn (Kaggle)](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) - 7,043 customers, 21 features
+A Streamlit app that ranks telecom customers by churn risk, built from my Week 1-3 notebooks (IBM Telco Customer Churn dataset). Decision support for a retention team, not automation.
 
-## Repository contents
-- `week1-eda.ipynb` - Week 1: exploratory data analysis
-- `week2-ml-models.ipynb` - Week 2: building, evaluating and interpreting ML models
-- `week3-optimization.ipynb` - Week 3: cross-validation, tuning, XGBoost, K-means segments, PCA
-- `churn_model.joblib` - Week 3: final saved model (about 428 KB)
-- Week 4: the deployed app lives in its own repo, `churn-risk-advisor` (see the Week 4 section below)
-- `README.md` - this file
+Live app: https://churn-risk-advisor-mifk87bjaqxx5xfumfjtw3.streamlit.app/
 
-## Week 1: Exploratory Data Analysis
-- Notebook: `week1-eda.ipynb`
-- Overall churn rate is about 26.5%, so the target is imbalanced.
-- Month-to-month contracts churn about 43%, versus about 11% (1-year) and about 3% (2-year).
-- Churned customers have much lower tenure (median about 10 months vs about 38).
-- Fiber optic customers churn about 42% vs about 19% for DSL; electronic check users churn the most (about 45%).
 
-## Week 2: Building ML Models
-- Notebook: `week2-ml-models.ipynb`
-- Baseline (always "stay"): accuracy 0.735, catches 0 of 374 test churners
-- Best model: Logistic Regression, AUC 0.842, recall 0.920 at threshold 0.15
-- Top churn drivers (permutation importance): tenure, TotalCharges, Contract_Two year
-- Threshold chosen: 0.15, because a missed churner (PKR 6,000) costs six times a wasted retention offer (PKR 1,000), so t* = 0.14; this cuts total cost from PKR 1,082,000 (at 0.5) to PKR 617,000
-- Engineered features: n_services, is_new, charge_per_mo, price_jump; effect on AUC: 0.8422 -> 0.8420 (no improvement)
-- Biggest lesson: accuracy is misleading on imbalanced churn data, and a cost-based threshold mattered more than the choice of model (Logistic Regression and Random Forest both reach AUC 0.842).
+Model card: Churn Risk Advisor v1.0
 
-### Model comparison (test set, 1,409 customers, threshold 0.5)
+Intended use: rank existing telecom customers by churn risk so a retention team can prioritize calls. Decision support, not automation. Not for: credit, pricing, or any decision that denies a service. Data: IBM Telco Customer Churn, 7,043 customers, 26.5% churn. Model: XGBClassifier (tuned with random search), chosen by 5-fold CV. Features: 30 encoded columns. Performance: CV AUC 0.850 +/- 0.012; test AUC 0.848 (test set used once). Threshold: 0.20, from a cost analysis (FN = PKR 6,000, FP = PKR 1,000) on out-of-fold training predictions; the theoretical value is 0.14 and the cost curve is flat between 0.15 and 0.20. Limitations: one US dataset from one period; no Pakistan data; associations, not causes; performance may drift as plans change. Fairness check (Week 15): compare recall across gender and seniors. Owner and version: Shoaib ur Rehman, v1.0, October 10, 2026.
 
-| Model | Accuracy | Precision | Recall | F1 | AUC |
-|---|---|---|---|---|---|
-| Baseline | 0.735 | 0.000 | 0.000 | 0.000 | 0.500 |
-| Logistic Regression | 0.807 | 0.658 | 0.567 | 0.609 | 0.842 |
-| LR balanced | 0.739 | 0.505 | 0.781 | 0.613 | 0.841 |
-| Decision Tree (d=5) | 0.796 | 0.632 | 0.551 | 0.589 | 0.829 |
-| Random Forest | 0.807 | 0.673 | 0.529 | 0.593 | 0.842 |
+Run it locally
 
-## Week 3: Model Optimization and Unsupervised Learning
-- Notebook: `week3-optimization.ipynb`
-- Split-to-split accuracy range across 20 seeds: 0.780 to 0.828 (std 0.0104, theoretical standard error 0.0107)
-- 5-fold CV AUC: LR 0.846 +/- 0.013, RF 0.844 +/- 0.011, XGBoost (tuned) 0.850 +/- 0.012
-- Tuning: best RF params (random search) max_depth 15, min_samples_leaf 15, max_features 0.21; grid vs random search time 73 s vs 84 s (both 120 fits, CV AUC 0.8468 vs 0.8464)
-- Test AUC of final model (XGBoost, used once): 0.848 (recall 0.521, precision 0.659 at threshold 0.5), saved as `churn_model.joblib`
-- Customer segments (k = 4): Fiber month-to-month (43% churn), New low spend (32%), Loyal premium bundle (14%), Loyal basic (5%)
-- PCA: 15 of 30 components explain 90% of the variance; PC1 is mostly a "no internet service" axis (several one-hot columns are exact copies)
-- Biggest lesson: a single split can move accuracy by about 5 points, and after careful tuning the three model families are statistically tied (CV AUC about 0.85), so the choice of threshold and the use of segments matter more than the choice of model.
+Needs Python 3.12 or newer (the pinned xgboost 3.4.1 does not install on 3.11). Windows (Mac/Linux: source .venv/bin/activate):
 
-## Week 4: From Notebook to Product
-- Live app: PASTE-YOUR-STREAMLIT-URL-HERE (code and model card: https://github.com/Shoaibrhman/churn-risk-advisor)
-- Notebook cells (end of `week3-optimization.ipynb`): skew demo (P(churn) 0.136 with the Week 3 encoder vs 0.012 with the serving encoder), parity test passed on 7,043 customers (largest difference 0.0), what-if table, `model_meta.json`
-- Final model in the app: tuned XGBoost, CV AUC 0.850 +/- 0.012, test AUC 0.848, contact threshold 0.20 (cost analysis, FN = PKR 6,000, FP = PKR 1,000)
-- Biggest lesson: a silent encoding bug changed one customer's probability from 0.012 to 0.136 without any error, so a parity test on every row is what proves that a deployed model gives the notebook's answers.
+cd churn-risk-advisor
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+streamlit run app.py
+Files
 
-### Setup
-Open the Kaggle notebooks, or run locally:
+app.py, churn_model.joblib, model_meta.json, requirements.txt (pins scikit-learn 1.6.1 and xgboost 3.4.1, the versions used in training), sample_customers.csv (50 customers for the batch demo), README.md.
 
-```
-pip install pandas numpy matplotlib seaborn scikit-learn
-```
+Notebooks
 
-Then download the dataset from Kaggle and update the file path in the notebook.
+Weeks 1 to 4 notebooks and write-ups: https://github.com/Shoaibrhman/customer-churn-prediction-1
+
+Build notes
+
+Part 1 (packaging): the Week 3 way of encoding a single customer (drop_first=True) gave P(churn) = 0.136 for a two-year-contract customer; the serving encoder gives 0.012. The parity test passes on all 7,043 customers (largest difference 0.0). Full explanation in the notebook.
+
+Part 2 (app tests, run headlessly with Streamlit's AppTest and by hand in the browser):
+
+Test	Result
+Default inputs	74% churn probability, HIGH band, "Contact now"
+Internet service = No	add-on selector disappears; probability changes to 25%
+Tenure 60 + two-year contract	9%, LOW band
+Move the threshold slider	probability stays 74%; band goes HIGH to WATCH at 0.95
+"Why this score?"	the lab's version is Logistic Regression only; my final model is XGBoost, so I added an XGBoost version (per-customer contributions in log-odds; they add up exactly to the probability)
+Batch: upload sample_customers.csv	scores 50 customers (24 above the 0.20 threshold); download works
+Batch: CSV with one column deleted	clear error naming the column, no crash
+
+The what-if table is labelled as an association learned from data, not a guaranteed effect.
+
+Behavior that surprised me: the threshold slider changes only the band and the action, never the probability, and at the cost-based threshold of 0.20 the app flags 24 of the 50 sample customers (48%) even though only 26.5% churn, because a missed churner is assumed to cost six times a wasted offer.
+
+Input handled badly: a batch CSV with a misspelled category (for example two year instead of Two year) raises no error; all of its dummy columns become 0 and the customer is scored as Month-to-month (P(churn) 0.029 became 0.123 in my test). A real user could easily enter this. A fix would be to validate each categorical column against the allowed values and show an error.
+
+Part 3 (deployment): public URL: https://churn-risk-advisor-mifk87bjaqxx5xfumfjtw3.streamlit.app/. First deployment: failed. The build log said ERROR: Could not find a version that satisfies the requirement xgboost==3.4.1 (the resolver explained that xgboost 3.4.1 depends on Python>=3.12, but I had chosen Python 3.11). I fixed it by deleting the app and redeploying with Python 3.12 (the app is deployed on Python 3.12), keeping the pinned xgboost version so the saved model loads in the same library version it was trained with.
+
+Check your understanding
+Why does get_dummies(drop_first=True) break predictions when scoring a single customer? With one row, each column has only one category, which is treated as the first and dropped, so all categories become 0 and the customer is read as the reference category. No error is raised; in my test P(churn) went from 0.012 to 0.136.
+What does the parity test compare, and why every training row? It compares the probabilities from the training-way features with the probabilities from the serving encoder. A mismatch can affect only some categories (for example "No phone service"), so a few rows could miss it; checking all 7,043 rows with assert np.allclose makes a single mismatch fail.
+st.cache_resource or st.cache_data? st.cache_resource: it keeps one shared model object loaded once per server. st.cache_data would copy (serialize) the return value, which is slow and wrong for a model.
+Why derive TotalCharges? It equals roughly tenure x monthly charge, so a user could otherwise type inconsistent values (tenure 4 with TotalCharges 5,000), and it is a strong feature. It is an approximation: it ignores past price changes.
+Why pin the exact scikit-learn version? A saved model depends on the library's internal structure. Another version can fail to unpickle or silently behave differently, so the server must install exactly what trained the model (and the same for xgboost).
+Would offering a two-year contract make the customer stay? Not necessarily. The drop from, say, 0.79 to 0.27 is an association: customers who choose two-year contracts differ from those who do not. A company could find out with a randomized experiment: offer the contract to a random half of at-risk customers and compare churn afterwards.
